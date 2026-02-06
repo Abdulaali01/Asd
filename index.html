@@ -86,8 +86,9 @@
 <script>
 // -------------------------
 // ⬅️ تخزين البلاغات المنجزة
-// -------------------------
-let doneStore = JSON.parse(localStorage.getItem("doneOrders") || "[]");
+// ------------------------
+  const STORAGE_KEY = location.hostname + "_doneOrders";
+let doneStore = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
 
 const state={rows:[],dateCol:"تاريخ الإنشاء",mobileCol:"رقم جوال المستفيد"};
 const $=id=>document.getElementById(id);
@@ -325,7 +326,7 @@ function markDone(btn,order,dateStr){
   // تخزين دائم
   if(!doneStore.includes(order)){
     doneStore.push(order);
-    localStorage.setItem("doneOrders", JSON.stringify(doneStore));
+localStorage.setItem(STORAGE_KEY, JSON.stringify(doneStore));
   }
 
   const row=state.rows.find(r =>
@@ -349,7 +350,7 @@ function markAllDuplicatesDone(){
     }
   });
 
-  localStorage.setItem("doneOrders", JSON.stringify(doneStore));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(doneStore));
 
   renderMainTable(state.rows);
   renderCalendar();
