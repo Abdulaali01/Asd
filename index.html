@@ -20,15 +20,27 @@ button{padding:6px 10px;border:none;border-radius:8px;cursor:pointer}
 .btn-done{background:#f44336;color:#fff}
 .copy-btn{background:#555;color:#fff;border-radius:4px;padding:2px 6px;font-size:11px}
 table{width:100%;min-width:900px;border-collapse:collapse;background:#fff}
-th,td{border:1px solid #ddd;padding:6px;text-align:center}
+th,td{border:1px solid #ddd;padding:6px;text-align:center;vertical-align:middle}
 th{background:#f0f0f0}
 tr.done-row{background:#ffdddd}
+
 .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);justify-content:center;align-items:center;z-index:9999;padding:14px}
 .modal-content{background:#fff;border-radius:10px;padding:14px;max-height:95vh;overflow:auto;width:95vw;max-width:1100px}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.close{cursor:pointer;color:#d00;font-weight:bold;font-size:18px}
+
 .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
-.calendar div{border:1px solid #ccc;border-radius:4px;padding:4px;min-height:85px}
-.blink{animation:blinkAnim 1s infinite}
-@keyframes blinkAnim{50%{opacity:.3}}
+.calendar .header{background:#eee;font-weight:bold}
+.calendar div{border:1px solid #ccc;border-radius:4px;padding:4px;min-height:85px;font-size:12px;background:#fff}
+.calendar .day{position:relative;cursor:pointer}
+.calendar .day span{display:block;font-size:10px;margin-top:2px;line-height:11px}
+
+.blink{animation:blinkAnim 1s infinite;}
+@keyframes blinkAnim{
+0%{opacity:1}
+50%{opacity:0.3}
+100%{opacity:1}
+}
 </style>
 </head>
 
@@ -41,12 +53,30 @@ tr.done-row{background:#ffdddd}
 <button class="btn" id="btnCalendar">📅 الكليندر الشهري</button>
 </div>
 
-<table id="tbl"></table>
+<div id="countRow" style="margin:6px 0; display:none">عدد النتائج: <b id="count">0</b></div>
+<table id="tbl" style="display:none"></table>
 
 <div id="calendarModal" class="modal">
 <div class="modal-content">
+<div class="modal-header">
+<h3>📅 الكليندر الشهري</h3>
+<span class="close" onclick="toggleModal('calendarModal',false)">✖</span>
+</div>
 <input type="month" id="monthPicker">
 <div id="calendarGrid" class="calendar"></div>
+</div>
+</div>
+
+<div id="viewModal" class="modal">
+<div class="modal-content">
+<div class="modal-header">
+<h3>📋 الطلبات المتكررة</h3>
+<span class="close" onclick="toggleModal('viewModal',false)">✖</span>
+</div>
+<table id="modalTbl"></table>
+<div style="margin-top:8px">
+<button class="btn-done" onclick="markAllDuplicatesDone()">✔️ تم للجميع</button>
+</div>
 </div>
 </div>
 
@@ -64,7 +94,7 @@ const TARGET_STATUSES=[
 "معلق - بانتظار مراجعة المشرف"
 ];
 
-file.addEventListener("change",async e=>{
+$("file").addEventListener("change",async e=>{
 const buf=await e.target.files[0].arrayBuffer();
 const wb=XLSX.read(buf,{type:"array"});
 const ws=wb.Sheets[wb.SheetNames[0]];
@@ -72,55 +102,73 @@ const ws=wb.Sheets[wb.SheetNames[0]];
 state.rows=XLSX.utils.sheet_to_json(ws,{defval:""}).map(r=>{
 let p=String(r[state.mobileCol]||"").replace(/\D/g,"");
 if(p.startsWith("0"))p="966"+p.slice(1);
-if(!p.startsWith("966"))p="966"+p;
+else if(!p.startsWith("966"))p="966"+p;
 r[state.mobileCol]=p;
 if(doneStore.includes(String(r["رقم الطلب"]))) r["حالة الطلب"]="تم إنجازه";
 return r;
 });
 });
 
-btnCalendar.onclick=()=>{
-calendarModal.style.display="flex";
-monthPicker.value=new Date().toISOString().slice(0,7);
+$("btnCalendar").onclick=()=>{
+toggleModal("calendarModal",true);
+$("monthPicker").value=new Date().toISOString().slice(0,7);
 renderCalendar();
 };
 
-monthPicker.onchange=renderCalendar;
+$("monthPicker").onchange=renderCalendar;
 
 function renderCalendar(){
-calendarGrid.innerHTML="";
-const [y,m]=monthPicker.value.split("-");
-const first=new Date(y,m-1,1);
-const last=new Date(y,m,0);
-
-for(let i=0;i<first.getDay();i++)calendarGrid.appendChild(document.createElement("div"));
-
+const m=$("monthPicker").value;
+if(!m)return;
+const[y,mm]=m.split("-");
+const year=parseInt(y),month=+mm-1;
+const first=new Date(year,month,1);
+const last=new Date(year,month+1,0);
+const grid=$("calendarGrid");
+grid.innerHTML="";
+["أحد","إثنين","ثلاثاء","أربعاء","خميس","جمعة","سبت"].forEach(d=>{
+const h=document.createElement("div");
+h.textContent=d;h.className="header";grid.appendChild(h);
+});
+for(let i=0;i<first.getDay();i++)grid.appendChild(document.createElement("div"));
 for(let d=1;d<=last.getDate();d++){
-const cell=document.createElement("div");
-const ds=`${y}-${pad(m)}-${pad(d)}`;
-const rows=state.rows.filter(r=>norm(r[state.dateCol])===ds);
+const cell=document.createElement("div");cell.className="day";cell.innerHTML=d;
+const ds=`${year}-${pad(month+1)}-${pad(d)}`;
+const rows=state.rows.filter(r=>normalizeDate(r[state.dateCol])===ds);
 const pending=rows.filter(r=>TARGET_STATUSES.includes(r["حالة الطلب"]||""));
-
-if(rows.length&&!pending.length)cell.style.background="#c8e6c9";
-else if(pending.length)cell.style.background="#ffe0b2";
-
-cell.innerHTML=d+"<br>معلق:"+pending.length;
-calendarGrid.appendChild(cell);
+const total=pending.length;
+if(rows.length>0)cell.innerHTML+=`<span>معلق:${total}</span>`;
+if(rows.length>0&&total===0)cell.style.background="#c8e6c9";
+if(rows.length>0&&total>0)cell.style.background="#ffe0b2";
+grid.appendChild(cell);
 }
 }
 
-function markDone(id){
-if(!doneStore.includes(id)){
-doneStore.push(id);
+function markDone(btn,order,dateStr){
+const tr=btn.closest("tr");
+tr.classList.add("done-row");
+tr.querySelector(".status-cell").textContent="تم إنجازه";
+if(!doneStore.includes(order)){
+doneStore.push(order);
 localStorage.setItem(STORAGE_KEY,JSON.stringify(doneStore));
 }
 renderCalendar();
 }
 
+function markAllDuplicatesDone(){
+state.rows.filter(r=>String(r[state.mobileCol])===String(currentMobile)).forEach(r=>{
+const id=String(r["رقم الطلب"]);
+if(!doneStore.includes(id))doneStore.push(id);
+});
+localStorage.setItem(STORAGE_KEY,JSON.stringify(doneStore));
+renderCalendar();
+toggleModal("viewModal",false);
+}
+
+function toggleModal(id,s){$(id).style.display=s?"flex":"none";}
 function pad(n){return String(n).padStart(2,"0")}
-function norm(d){const x=new Date(d);return `${x.getFullYear()}-${pad(x.getMonth()+1)}-${pad(x.getDate())}`}
+function normalizeDate(r){const d=new Date(r);return`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
 
 </script>
-
 </body>
 </html>
