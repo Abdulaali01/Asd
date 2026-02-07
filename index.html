@@ -217,7 +217,8 @@ function renderCalendar(){
 
     const rows=state.rows.filter(r=>normalizeDate(r[state.dateCol])===dateStr);
 
-    const pending=rows.filter(r=>TARGET_STATUSES.includes(r["حالة الطلب"]||""));
+    const pending = rows.filter(r =>
+ Attach the relevant code.
     const total=pending.length;
 
     if(rows.length>0){
