@@ -87,7 +87,7 @@
 // -------------------------
 // ⬅️ تخزين البلاغات المنجزة
 // ------------------------
-  const STORAGE_KEY = location.hostname + "_doneOrders";
+const STORAGE_KEY = location.hostname + "_doneOrders";
 let doneStore = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
 
 const state={rows:[],dateCol:"تاريخ الإنشاء",mobileCol:"رقم جوال المستفيد"};
@@ -215,16 +215,12 @@ function renderCalendar(){
 
     const dateStr=`${year}-${pad(month+1)}-${pad(d)}`;
 
-    const rows = state.rows.filter(r=>{
-  const d = new Date(r[state.dateCol]);
-  if(isNaN(d)) return false;
-  const ymd = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  return ymd === dateStr;
-});
+    // ✅ تعديل: فلترة اليوم تعتمد على normalizeDate الجديد (بدل new Date اللي يلخبط مع MM/DD/YY)
+    const rows = state.rows.filter(r => normalizeDate(r[state.dateCol]) === dateStr);
 
     const pending = rows.filter(r =>
-  TARGET_STATUSES.includes(String(r["حالة الطلب"]||"").trim())
-);
+      TARGET_STATUSES.includes(String(r["حالة الطلب"]||"").trim())
+    );
     const total=pending.length;
 
     if(rows.length>0){
@@ -238,9 +234,13 @@ function renderCalendar(){
     }
 
     if(rows.length>0 && total > 0){
-      const firstDate = new Date(
-        Math.min(...rows.map(r => new Date(r[state.dateCol])))
-      );
+      // ✅ تعديل: استخراج أقدم تاريخ صحيح باستخدام parseDateTimeSafe
+      const times = rows
+        .map(r => parseDateTimeSafe(r[state.dateCol]))
+        .filter(dt => dt && !isNaN(dt.getTime()))
+        .map(dt => dt.getTime());
+
+      const firstDate = new Date(Math.min(...times));
 
       const diffDays = Math.floor((new Date() - firstDate) / (1000 * 60 * 60 * 24));
       const daysLeft = 42 - diffDays;
@@ -266,9 +266,10 @@ function renderCalendar(){
     }
 
     cell.addEventListener("click",()=>{
+      // ✅ تعديل: نفس منطق المطابقة (normalizeDate) + trim للحالة
       const filtered=state.rows.filter(r =>
         normalizeDate(r[state.dateCol])===dateStr &&
-        TARGET_STATUSES.includes(r["حالة الطلب"]||"")
+        TARGET_STATUSES.includes(String(r["حالة الطلب"]||"").trim())
       );
       renderMainTable(filtered);
     });
@@ -333,7 +334,7 @@ function markDone(btn,order,dateStr){
   // تخزين دائم
   if(!doneStore.includes(order)){
     doneStore.push(order);
-localStorage.setItem(STORAGE_KEY, JSON.stringify(doneStore));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(doneStore));
   }
 
   const row=state.rows.find(r =>
@@ -408,15 +409,59 @@ function sendWA(phone,order,desc){
 function toggleModal(id,show){ $(id).style.display=show?"flex":"none"; }
 function pad(n){ return String(n).padStart(2,"0"); }
 
-function normalizeDate(raw){
-  const dt=new Date(raw);
-  return isNaN(dt) ? "" :
-    `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;
+/* =========================================
+   ✅ تعديل مهم: فك تاريخ Excel/النظام بصيغة MM/DD/YY + AM/PM
+   يدعم:
+   2/5/26 8:50:38 PM
+   02/05/2026 08:50:38 AM
+   ========================================= */
+function parseDateTimeSafe(raw){
+  if(raw===null || raw===undefined || raw==="") return null;
+
+  // لو Excel رقم (Serial)
+  if(typeof raw==="number"){
+    // Excel epoch: 1899-12-30
+    const ms = Math.round((raw - 25569) * 86400 * 1000);
+    const d = new Date(ms);
+    return isNaN(d) ? null : d;
+  }
+
+  const t = String(raw).trim();
+
+  // صيغة: M/D/YY HH:MM:SS AM/PM
+  const m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?/i);
+  if(m){
+    let MM = parseInt(m[1],10);
+    let DD = parseInt(m[2],10);
+    let YY = m[3];
+    YY = (YY.length===2) ? ("20"+YY) : YY;
+    let hh = m[4] ? parseInt(m[4],10) : 0;
+    let mi = m[5] ? parseInt(m[5],10) : 0;
+    let ss = m[6] ? parseInt(m[6],10) : 0;
+    const ap = (m[7]||"").toUpperCase();
+
+    if(ap==="PM" && hh<12) hh+=12;
+    if(ap==="AM" && hh===12) hh=0;
+
+    const d = new Date(parseInt(YY,10), MM-1, DD, hh, mi, ss);
+    return isNaN(d) ? null : d;
+  }
+
+  // fallback
+  const d2 = new Date(t);
+  return isNaN(d2) ? null : d2;
 }
 
+// ✅ normalizeDate يستخدم parseDateTimeSafe لتثبيت اليوم
+function normalizeDate(raw){
+  const dt = parseDateTimeSafe(raw);
+  return (!dt) ? "" : `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;
+}
+
+// ✅ normalizeDateTime يستخدم parseDateTimeSafe لتثبيت الوقت
 function normalizeDateTime(raw){
-  const dt=new Date(raw);
-  if(isNaN(dt)) return "";
+  const dt = parseDateTimeSafe(raw);
+  if(!dt) return "";
   return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())} `
         +`${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
 }
