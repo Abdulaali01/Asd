@@ -215,11 +215,15 @@ function renderCalendar(){
 
     const dateStr=`${year}-${pad(month+1)}-${pad(d)}`;
 
-    const rows=state.rows.filter(r=>normalizeDate(r[state.dateCol])===dateStr);
+    const rows = state.rows.filter(r =>
+  normalizeDateTime(r[state.dateCol]).startsWith(dateStr)
+);
 
-    const pending = rows.filter(r =>
- Attach the relevant code.
-    const total=pending.length;
+const pending = rows.filter(r =>
+  TARGET_STATUSES.includes((r["حالة الطلب"] || "").trim())
+);
+
+const total = pending.length;
 
     if(rows.length>0){
       cell.innerHTML += `<span>معلق: ${total}</span>`;
