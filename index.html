@@ -59,7 +59,7 @@ button:disabled{opacity:.6;cursor:wait}
 .done a{font-family:var(--display);font-weight:700;color:#fff;background:var(--navy);padding:9px 14px;border-radius:8px;text-decoration:none}
 .hrs{display:flex;align-items:center;gap:6px;font:700 .85rem var(--display);color:var(--muted)}.hrs select{font:700 .9rem var(--display);padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
 .sent{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:16px}.sent summary{font:800 1rem var(--display);cursor:pointer}.sent p{color:var(--muted);font-size:.85rem}.sent ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}.sent li{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:10px}.sent li span{flex:1 1 200px;min-width:0}.sent code{font:700 1.05rem monospace;direction:ltr;user-select:all}
-.owner.ask{outline:3px solid var(--rust);outline-offset:4px;border-radius:8px}.owner b{flex-basis:100%;font-family:var(--display)}.owner{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.85rem;margin:8px 0}.owner input{flex:1 1 140px;min-width:0;font:400 .9rem var(--body);padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}.sent .ctl{display:flex;flex-wrap:wrap;gap:6px;flex-basis:100%}.sent .ctl select{font:700 .85rem var(--display);padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}.sent .ctl button,.sent li>button{padding:7px 10px;font-size:.82rem}.stt{font-style:normal;font-size:.8rem;flex-basis:100%;color:var(--muted)}.stt.on{color:var(--ok)}.stt.off{color:var(--rust)}
+.owner.ask{outline:3px solid var(--rust);outline-offset:4px;border-radius:8px}.owner .lmsg{flex-basis:100%;color:var(--rust);font-size:.85rem;direction:rtl;word-break:break-word}.owner b{flex-basis:100%;font-family:var(--display)}.owner{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.85rem;margin:8px 0}.owner input{flex:1 1 140px;min-width:0;font:400 .9rem var(--body);padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}.sent .ctl{display:flex;flex-wrap:wrap;gap:6px;flex-basis:100%}.sent .ctl select{font:700 .85rem var(--display);padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}.sent .ctl button,.sent li>button{padding:7px 10px;font-size:.82rem}.stt{font-style:normal;font-size:.8rem;flex-basis:100%;color:var(--muted)}.stt.on{color:var(--ok)}.stt.off{color:var(--rust)}
 .empty{display:grid;gap:6px;text-align:center;padding:48px 16px;border:2px dashed var(--line);border-radius:12px;color:var(--muted)}
 .empty b{font-family:var(--display);font-size:1.15rem;color:var(--fg)}
 </style></head><body>
@@ -74,6 +74,7 @@ var FB_KEY = "AIzaSyCj_IStSKuqHpVCbSFk6cpElCRxkFBUeeg";  // Web API key من Fir
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script id="app">
+const VER="v8";
 const SRC={cfg:document.getElementById("cfg").textContent,app:document.getElementById("app").textContent,css:document.getElementById("css").textContent};
 const EMB=(typeof EMBED!=="undefined")?EMBED:null;
 const BOX={ifada:[37.1,54.43,58.47,42.62],coords:[4.43,74.84,29.03,22.24]};
@@ -133,15 +134,15 @@ function showClosed(t,m){CLOSED=true;$("#bar").hidden=true;$("#main").hidden=tru
   $("#gateForm").innerHTML=`<h2>${t}</h2><p>${m}</p>`+(ext?`<p>إذا أرسل لك صاحب الملف رمز تمديد، اكتبه هنا:</p><input id="extIn" autocomplete="off" placeholder="XXXX-XXXX-XXXX-XXXX" aria-label="رمز التمديد" style="letter-spacing:.08em;font-size:1.1rem;direction:ltr"><div class="err" id="extErr"></div><button type="submit">تمديد</button>`:"");
   if(ext)$("#gateForm").onsubmit=async e=>{e.preventDefault();if(tryExtend($("#extIn").value)){REMOTE=null;location.reload();return}else $("#extErr").textContent="الرمز غير صحيح أو مستخدم من قبل"};$("#gateForm").insertAdjacentHTML("beforeend",EMB&&EMB.fid&&FB_DB?`<button type="button" id="recheck" class="b-link" style="margin-top:4px">🔄 تحقق مرة أخرى</button>`:"");const rc=$("#recheck");if(rc)rc.onclick=async()=>{rc.disabled=true;await fetchRemote();if(!stopped())location.reload();else{rc.disabled=false;toast("ما زالت متوقفة")}}}
 function closeNow(){if(REMOTE&&REMOTE.active===false)showClosed("الصفحة متوقفة","أوقف صاحب الملف هذه الصفحة.");else showClosed("انتهت المدة",STOP_MSG)}
-(async()=>{if(EMB&&EMB.fid&&FB_DB){$("#gate").hidden=false;$("#gateForm").innerHTML="<h2>جارٍ التحقق…</h2>";await fetchRemote()}
+setTimeout(async()=>{if(EMB&&EMB.fid&&FB_DB){$("#gate").hidden=false;$("#gateForm").innerHTML="<h2>جارٍ التحقق…</h2>";await fetchRemote()}
   if(stopped())closeNow();else openApp();renderSent();
-  setInterval(async()=>{await fetchRemote();if(stopped()){if(!CLOSED)closeNow()}else if(CLOSED)location.reload();else if(EMB)$("#status").textContent="اكتب في المربعات وغيّر صور «بعد»، ثم اضغط «تجهيز PDF»."+untilText()},60000)})();
+  setInterval(async()=>{await fetchRemote();if(stopped()){if(!CLOSED)closeNow()}else if(CLOSED)location.reload();else if(EMB)$("#status").textContent="اكتب في المربعات وغيّر صور «بعد»، ثم اضغط «تجهيز PDF»."+untilText()},60000)},0);
 function remoteText(){if(!EMB||!EMB.fid)return "";return {ok:" · 🌐 متصل بالتحكم",none:" · ⚠️ الملف غير مسجّل في التحكم",fail:" · ⚠️ لا اتصال بالتحكم"}[RSTATE]||(RSTATE?" · ⚠️ خطأ "+RSTATE:"")}
 function untilText(){const t=effectiveExpiry();if(t===null)return "";const d=new Date(t);return remoteText()+" · متاح حتى "+d.toLocaleString("ar-SA-u-ca-gregory",{weekday:"long",hour:"numeric",minute:"2-digit"})}
 
 function openApp(){$("#gate").hidden=true;$("#bar").hidden=false;$("#main").hidden=false;
   if(EMB){$("#btnAttach").hidden=true;docName=EMB.name||docName;load(EMB.pages,EMB.ids)}
-  else $("#status").textContent="ابدأ بإرفاق ملف PDF.";}
+  else $("#status").textContent="ابدأ بإرفاق ملف PDF. ("+VER+")";}
 
 $("#btnAttach").onclick=()=>$("#pdfIn").click();
 $("#pdfIn").onchange=async()=>{const f=$("#pdfIn").files[0];$("#pdfIn").value="";if(!f)return;
@@ -211,18 +212,34 @@ async function idToken(){const a=authGet();if(!a)return null;if(Date.now()<a.exp
 async function fbPatch(fid,data){const t=await idToken();if(!t)throw new Error("login");const r=await fetch(`${FB_DB}/files/${fid}.json?auth=${encodeURIComponent(t)}`,{method:"PATCH",body:JSON.stringify(data)});if(!r.ok)throw new Error("write "+r.status);return r.json()}
 async function fbGet(fid){try{const r=await fetch(`${FB_DB}/files/${fid}.json`,{cache:"no-store"});return r.ok?await r.json():undefined}catch(_){return undefined}}
 const AUTH_ERR={INVALID_LOGIN_CREDENTIALS:"البريد أو كلمة المرور غير صحيحة",INVALID_PASSWORD:"كلمة المرور غير صحيحة",EMAIL_NOT_FOUND:"البريد غير مسجّل",TOO_MANY_ATTEMPTS_TRY_LATER:"محاولات كثيرة، انتظر قليلاً","API":"مفتاح FB_KEY غير صحيح في الإعدادات"};
+async function diag(res){res.style.color="var(--fg)";const L=[`الإصدار: ${VER}`];res.textContent="جارٍ الفحص…";
+  let t=null;try{t=await idToken();L.push(t?"✅ الدخول صالح":"❌ الدخول منتهٍ، سجّل خروج ثم دخول")}catch(e){L.push("❌ الدخول: "+e.message)}
+  try{const r=await fetch(`${FB_DB}/files/_diag.json?auth=${encodeURIComponent(t||"")}`,{method:"PUT",body:JSON.stringify({t:Date.now()})});L.push(r.ok?"✅ الكتابة في القاعدة تعمل":"❌ الكتابة مرفوضة ("+r.status+") — تحقق من UID في القواعد")}catch(e){L.push("❌ لا اتصال بالقاعدة: "+e.message)}
+  try{const r=await fetch(`${FB_DB}/files/_diag.json`,{cache:"no-store"});L.push(r.ok?"✅ القراءة للمستلم تعمل":"❌ القراءة مرفوضة ("+r.status+")")}catch(e){L.push("❌ القراءة: "+e.message)}
+  try{const r=await fetch(`${FB_DB}/files.json?auth=${encodeURIComponent(t||"")}`,{cache:"no-store"});L.push(r.ok?"✅ قائمة الملفات تُجلب من القاعدة":"⚠️ قائمة الملفات لا تُجلب ("+r.status+") — حدّث القواعد")}catch(e){L.push("❌ القائمة: "+e.message)}
+  res.innerHTML="";L.forEach(x=>res.append(el("div",{textContent:x})))}
 function needLogin(){const d=$("#sent");d.open=true;const o=$("#owner");o.classList.add("ask");o.scrollIntoView({behavior:"smooth",block:"center"});
   const em=o.querySelector("input[type=email]");if(em)setTimeout(()=>em.focus(),400);toast("سجّل دخولك أولاً ببريد Firebase وكلمة المرور");setTimeout(()=>o.classList.remove("ask"),2500)}
 function renderOwner(){const o=$("#owner");if(!o)return;const a=authGet();o.innerHTML="";
-  if(a){o.append(el("span",{textContent:"✅ مسجّل: "+a.email}));const out=el("button",{type:"button",className:"b-link",textContent:"خروج"});out.onclick=()=>{try{localStorage.removeItem(AUTH_K)}catch(_){}renderOwner()};o.append(out);return}
+  if(a){o.append(el("span",{textContent:"✅ مسجّل: "+a.email}));const out=el("button",{type:"button",className:"b-link",textContent:"خروج"});out.onclick=()=>{try{localStorage.removeItem(AUTH_K)}catch(_){}SYNCED=false;renderOwner()};
+    const dg=el("button",{type:"button",className:"b-link",textContent:"🧪 فحص الاتصال"});const res=el("div",{className:"lmsg"});dg.onclick=()=>diag(res);o.append(out,dg,res);return}
   const em=el("input",{type:"email",placeholder:"البريد",autocomplete:"username"}),pw=el("input",{type:"password",placeholder:"كلمة المرور",autocomplete:"current-password"});
   em.setAttribute("aria-label","البريد");pw.setAttribute("aria-label","كلمة المرور");const go=el("button",{type:"button",className:"b-send",textContent:"دخول"});
-  go.onclick=async()=>{go.disabled=true;try{await signIn(em.value.trim(),pw.value);toast("تم تسجيل الدخول");renderOwner();renderSent()}catch(e){toast(AUTH_ERR[String(e.message).split(" ")[0]]||(/API key/i.test(e.message)?AUTH_ERR.API:"")||"تعذّر الدخول: "+e.message)}finally{go.disabled=false}};
-  o.append(el("b",{textContent:"🔐 سجّل دخولك للتمديد والإيقاف (بريد وكلمة مرور Firebase):"}),em,pw,go)}
+  const msg=el("div",{className:"lmsg"});
+  go.onclick=async()=>{go.disabled=true;go.textContent="جارٍ الدخول…";msg.textContent="";
+    try{await signIn(em.value.trim(),pw.value);toast("تم تسجيل الدخول");renderOwner();renderSent()}
+    catch(e){const m=String(e.message||e);msg.textContent="❌ "+(AUTH_ERR[m.split(" ")[0]]||(/API key/i.test(m)?AUTH_ERR.API:"")||(/Failed to fetch|NetworkError|Load failed/i.test(m)?"لا يوجد اتصال بخدمة Firebase":"")||"تعذّر الدخول")+"  ("+m+")"}
+    finally{go.disabled=false;go.textContent="دخول"}};
+  o.append(el("b",{textContent:"🔐 سجّل دخولك للتمديد والإيقاف (بريد وكلمة مرور Firebase):"}),em,pw,go,msg)}
 const fmt=t=>new Date(t).toLocaleString("ar-SA-u-ca-gregory",{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"});
 function sentList(){try{return JSON.parse(localStorage.getItem("sent_files")||"[]")}catch(_){return []}}
 function saveSent(l){try{localStorage.setItem("sent_files",JSON.stringify(l.slice(0,50)))}catch(_){}}
-function renderSent(){const box=$("#sent");if(EMB){box.hidden=true;return}renderOwner();const l=sentList();box.hidden=false;$("#noSent").hidden=!!l.length;const ul=$("#sentList");ul.innerHTML="";
+async function syncSent(){const t=await idToken();if(!t)return false;try{const r=await fetch(`${FB_DB}/files.json?auth=${encodeURIComponent(t)}`,{cache:"no-store"});if(!r.ok)return "err"+r.status;
+  const all=await r.json()||{};const L=sentList();const have=new Set(L.map(x=>x.fid));
+  Object.entries(all).forEach(([fid,d])=>{if(!d||have.has(fid)||fid.startsWith("_"))return;L.push({fid,name:d.name||"ملف",count:d.count||0,created:d.created||0,hours:d.hours||24,seed:"",used:0})});
+  L.sort((a,b)=>b.created-a.created);saveSent(L);return true}catch(e){return "fail"}}
+let SYNCED=false;
+function renderSent(){const box=$("#sent");if(EMB){box.hidden=true;return}renderOwner();if(!SYNCED&&authGet()){SYNCED=true;syncSent().then(ok=>{if(ok===true)renderSent();else if(ok)toast("تعذّر جلب الملفات من القاعدة ("+ok+") — حدّث القواعد")})}const l=sentList();box.hidden=false;$("#noSent").hidden=!!l.length;const ul=$("#sentList");ul.innerHTML="";
   l.forEach((f,idx)=>{const li=el("li");const d=new Date(f.created).toLocaleString("ar-SA-u-ca-gregory",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"});
     li.append(el("span",{textContent:`${f.name} · ${f.count} بلاغ · ${d} · ${f.hours} ساعة`}));
     const stt=el("em",{className:"stt",textContent:"…"});li.append(stt);
@@ -239,7 +256,7 @@ function renderSent(){const box=$("#sent");if(EMB){box.hidden=true;return}render
     const out=el("code");const b=el("button",{type:"button",className:"b-link",textContent:"🔑 رمز بدون إنترنت"});
     b.onclick=async()=>{const L=sentList();const F=L[idx];if(F.used>=CHAIN){toast("انتهت رموز التمديد لهذا الملف");return}F.used++;saveSent(L);
       const code=toCode(chainAt(fromHex(F.seed),F.used));out.textContent=code;try{await navigator.clipboard.writeText(code);toast(`نُسخ الرمز — يمدّد ${F.hours} ساعة`)}catch(_){toast("انسخ الرمز الظاهر")}};
-    li.append(b,out);ul.append(li)})}
+    if(f.seed)li.append(b,out);ul.append(li)})}
 $("#btnPdf").onclick=async()=>{if(stopped()){toast(STOP_MSG);return}const btn=$("#btnPdf");btn.disabled=true;btn.textContent="جارٍ التجهيز…";
   try{try{await document.fonts.load("700 30px Cairo")}catch(_){}const jp=[];let W=910,H=1287;
     for(let i=0;i<IDS.length;i++){const st=state[IDS[i]];const bg=await loadImg(PAGES[i]);W=bg.width;H=bg.height;
@@ -258,7 +275,7 @@ $("#btnPdf").onclick=async()=>{if(stopped()){toast(STOP_MSG);return}const btn=$(
 $("#btnHtml").onclick=()=>{const h=Math.min(24,Math.max(1,parseInt($("#hrs").value)||24));const exp=new Date(Date.now()+h*3600e3).toISOString();
   const seed=crypto.getRandomValues(new Uint8Array(10)),fid=toHex(crypto.getRandomValues(new Uint8Array(6))),anchor=toHex(chainAt(seed,0));
   const list=sentList();list.unshift({fid,name:docName,count:IDS.length,created:Date.now(),hours:h,seed:toHex(seed),used:0});saveSent(list);
-  fbPatch(fid,{until:Date.parse(exp),active:true,name:docName,created:Date.now()}).then(()=>renderSent()).catch(e=>{renderSent();toast(e.message==="login"?"الملف جاهز — سجّل دخولك لتتحكم به عن بُعد":"الملف جاهز — لم يُسجَّل في القاعدة")});
+  fbPatch(fid,{until:Date.parse(exp),active:true,name:docName,created:Date.now(),count:IDS.length,hours:h}).then(()=>renderSent()).catch(e=>{renderSent();toast(e.message==="login"?"الملف جاهز — سجّل دخولك لتتحكم به عن بُعد":"الملف جاهز — لم يُسجَّل في القاعدة")});
   const q=k=>k==="cfg"?SRC.cfg.replace(/var EXPIRES\s*=\s*"[^"]*"/,`var EXPIRES = "${exp}"`).replace(/var ACTIVE\s*=\s*\w+/,"var ACTIVE  = true"):SRC[k];
   const lt="<",doc=`${lt}!doctype html>${lt}html lang="ar" dir="rtl">${lt}head>${lt}meta charset="utf-8">${lt}meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">${lt}title>${docName}${lt}/title>`+
    `${lt}link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;800&family=IBM+Plex+Sans+Arabic:wght@400;600&display=swap">${lt}style id="css">${q("css")}${lt}/style>${lt}/head>${lt}body>`+
